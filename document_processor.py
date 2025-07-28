@@ -1,5 +1,6 @@
 import requests
-import fitz  # PyMuPDF
+import PyPDF2
+import io
 from typing import List
 
 def convert_google_docs_url(url: str) -> str:
@@ -21,7 +22,7 @@ def convert_google_docs_url(url: str) -> str:
     return url
 
 def extract_text_from_pdf(url: str) -> List[str]:
-    """Extract text from PDF URL"""
+    """Extract text from PDF URL using PyPDF2"""
     # Convert Google Docs URL to PDF export URL if needed
     pdf_url = convert_google_docs_url(url)
     
@@ -30,9 +31,16 @@ def extract_text_from_pdf(url: str) -> List[str]:
         response.raise_for_status()  # Raise an exception for bad status codes
         
         pdf_bytes = response.content
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        pages = [page.get_text() for page in doc]
-        doc.close()  # Close the document to free memory
+        pdf_file = io.BytesIO(pdf_bytes)
+        
+        # Use PyPDF2 to extract text
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        pages = []
+        
+        for page_num in range(len(pdf_reader.pages)):
+            page = pdf_reader.pages[page_num]
+            text = page.extract_text()
+            pages.append(text)
         
         if not pages or all(not page.strip() for page in pages):
             raise ValueError("No text content found in the PDF")
